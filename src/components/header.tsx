@@ -46,8 +46,9 @@ export function Header() {
           </span>
         </Link>
         
-        {/* Desktop Navigation */}
+        {/* Desktop Navigation — only show when logged in */}
         <nav className="hidden md:flex items-center gap-1">
+          {user && !loading && (<>
           <Button asChild variant="ghost" className="hover:bg-violet-50 dark:hover:bg-violet-950/40 hover:text-violet-700 dark:hover:text-violet-300 transition-all duration-300">
             <Link href="/languages" className="flex items-center gap-2">
               <Languages className="transition-transform duration-300 group-hover:scale-110"/> Programming Languages
@@ -79,7 +80,8 @@ export function Header() {
               <MessageCircle className="h-4 w-4" /> Community Chat
             </Link>
           </Button>
-          
+          </>)}
+
           {/* Authentication Section */}
           <div className="flex items-center gap-2 ml-2">
             <ThemeToggle />
@@ -191,7 +193,7 @@ export function Header() {
                 <SheetTitle className="sr-only">Menu</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-4 mt-8">
-                {navLinks.map((link, index) => (
+                {user && navLinks.map((link, index) => (
                   <SheetClose key={link.href} asChild>
                       <Link
                         href={link.href}

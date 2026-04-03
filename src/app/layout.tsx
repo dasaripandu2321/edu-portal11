@@ -6,6 +6,7 @@ import { Header } from '@/components/header';
 import { cn } from '@/lib/utils';
 import { AuthProvider } from '@/contexts/auth-context';
 import { FloatingChat } from '@/components/floating-chat';
+import { AIDoubtBot } from '@/components/ai-doubt-bot';
 
 export const metadata: Metadata = {
   title: 'Edu Portal',
@@ -51,6 +52,7 @@ export default function RootLayout({
           <main className="flex-1 relative z-10">{children}</main>
           <Toaster />
           <FloatingChat />
+          <AIDoubtBot />
         </AuthProvider>
       </body>
     </html>

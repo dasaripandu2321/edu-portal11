@@ -1,24 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { signToken, COOKIE_NAME, cookieOptions } from '@/lib/auth-server';
-import { findUserByEmail, createUser, toPublic } from '@/lib/auth-server';
+import { signToken, COOKIE_NAME, cookieOptions, findUserByEmail, createUser, toPublic } from '@/lib/auth-server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, displayName, photoUrl } = await req.json();
+    const { email: rawEmail, displayName, photoUrl, provider, uid } = await req.json();
+
+    // Build a guaranteed non-empty email
+    const email = rawEmail?.trim()
+      || (uid ? `${uid}@${provider || 'oauth'}.com` : null);
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
     }
 
-    // Find existing user or create new one
-    let stored = findUserByEmail(email.trim());
+    let stored = findUserByEmail(email);
 
     if (!stored) {
       try {
-        await createUser(email.trim(), `oauth_${Date.now()}`, displayName || email.split('@')[0]);
-        stored = findUserByEmail(email.trim());
+        await createUser(
+          email,
+          `oauth_${Date.now()}`,
+          displayName || email.split('@')[0],
+        );
+        stored = findUserByEmail(email);
       } catch {
-        stored = findUserByEmail(email.trim());
+        // Already exists (race condition) — just fetch it
+        stored = findUserByEmail(email);
       }
     }
 

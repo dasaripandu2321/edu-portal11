@@ -94,15 +94,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGoogle = async (): Promise<UserCredential> => {
     const result = await signInWithPopup(auth, googleProvider);
     const fbUser = result.user;
-    // Sync with our backend (find-or-create)
+    // Use uid-based email fallback if Google doesn't return email
+    const email = fbUser.email || `${fbUser.uid}@google-oauth.com`;
     const res = await fetch('/api/auth/oauth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: fbUser.email,
-        displayName: fbUser.displayName || fbUser.email?.split('@')[0],
+        email,
+        displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Google User',
         photoUrl: fbUser.photoURL,
         provider: 'google',
+        uid: fbUser.uid,
       }),
     });
     const data = await res.json();
@@ -115,14 +117,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithGithub = async (): Promise<UserCredential> => {
     const result = await signInWithPopup(auth, githubProvider);
     const fbUser = result.user;
+    const email = fbUser.email || `${fbUser.uid}@github-oauth.com`;
     const res = await fetch('/api/auth/oauth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: fbUser.email,
-        displayName: fbUser.displayName || fbUser.email?.split('@')[0],
+        email,
+        displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'GitHub User',
         photoUrl: fbUser.photoURL,
         provider: 'github',
+        uid: fbUser.uid,
       }),
     });
     const data = await res.json();

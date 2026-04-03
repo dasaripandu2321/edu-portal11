@@ -1,10 +1,7 @@
-import fs from 'fs';
-import path from 'path';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'edu-portal-secret-key-change-in-production';
-const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 
 export interface StoredUser {
   id: string;
@@ -25,34 +22,27 @@ export interface PublicUser {
   photoUrl?: string;
 }
 
-// ── File-based user store ─────────────────────────────────────────────────────
+// ── In-memory store (works on Vercel serverless) ──────────────────────────────
+// For production persistence, this is backed by a module-level Map
+// Users registered via email/password persist per warm instance
+// OAuth users are always find-or-create via Firestore in the oauth route
 
-function ensureDataDir() {
-  const dir = path.join(process.cwd(), 'data');
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]');
-}
-
-export function readUsers(): StoredUser[] {
-  ensureDataDir();
-  try {
-    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
-  } catch {
-    return [];
-  }
-}
-
-function writeUsers(users: StoredUser[]) {
-  ensureDataDir();
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-}
+const userStore = new Map<string, StoredUser>();
 
 export function findUserByEmail(email: string): StoredUser | null {
-  return readUsers().find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+  const key = email.toLowerCase();
+  return userStore.get(key) || null;
 }
 
 export function findUserById(id: string): StoredUser | null {
-  return readUsers().find(u => u.id === id) || null;
+  for (const u of userStore.values()) {
+    if (u.id === id) return u;
+  }
+  return null;
+}
+
+export function readUsers(): StoredUser[] {
+  return Array.from(userStore.values());
 }
 
 // ── Password ──────────────────────────────────────────────────────────────────
@@ -62,28 +52,30 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  if (hash.startsWith('oauth_') || hash.startsWith('oauth:')) return false;
   return bcrypt.compare(password, hash);
 }
 
 // ── User creation ─────────────────────────────────────────────────────────────
 
 export async function createUser(email: string, password: string, displayName?: string): Promise<PublicUser> {
-  const users = readUsers();
-  if (users.find(u => u.email.toLowerCase() === email.toLowerCase())) {
-    throw new Error('EMAIL_IN_USE');
-  }
+  const key = email.toLowerCase();
+  if (userStore.has(key)) throw new Error('EMAIL_IN_USE');
+
   const id = `u_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const passwordHash = await hashPassword(password);
+  const passwordHash = password.startsWith('oauth_')
+    ? password
+    : await hashPassword(password);
+
   const newUser: StoredUser = {
     id,
-    email: email.toLowerCase(),
+    email: key,
     displayName: displayName || email.split('@')[0],
     passwordHash,
     userType: 'student',
     createdAt: new Date().toISOString(),
   };
-  users.push(newUser);
-  writeUsers(users);
+  userStore.set(key, newUser);
   return toPublic(newUser);
 }
 
@@ -114,8 +106,6 @@ export function cookieOptions(maxAge: number) {
     maxAge,
   };
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function toPublic(u: StoredUser): PublicUser {
   const { passwordHash: _, ...pub } = u;

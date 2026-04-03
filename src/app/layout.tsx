@@ -4,7 +4,6 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/header';
 import { cn } from '@/lib/utils';
-import { TechNewsBot } from '@/components/tech-news-bot';
 import { AuthProvider } from '@/contexts/auth-context';
 import { FloatingChat } from '@/components/floating-chat';
 
@@ -51,7 +50,6 @@ export default function RootLayout({
           <Header />
           <main className="flex-1 relative z-10">{children}</main>
           <Toaster />
-          <TechNewsBot />
           <FloatingChat />
         </AuthProvider>
       </body>

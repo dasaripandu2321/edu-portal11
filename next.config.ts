@@ -18,13 +18,25 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Performance optimizations
   experimental: {
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
-  // Reduce bundle size
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
+  },
+  // Fix Firebase OAuth popup blocked by COOP header
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin-allow-popups',
+          },
+        ],
+      },
+    ];
   },
 };
 
